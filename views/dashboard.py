@@ -10,10 +10,12 @@ from __future__ import annotations
 
 from datetime import date
 
+import matplotlib.pyplot as plt
 import streamlit as st
 import pandas as pd
 
 from db.patients import get_all_patients, get_phase_history
+from db.progress import get_all_phases
 
 
 def show_dashboard() -> None:
@@ -33,6 +35,12 @@ def show_dashboard() -> None:
     if not patients:
         st.info("No patients yet. Use **+ Add Patient** to get started.")
         return
+
+    # Phase timeline chart
+    phases = get_all_phases()
+    _show_phase_timeline(patients, phases)
+
+    st.divider()
 
     # Build the summary table
     rows = []
@@ -70,6 +78,71 @@ def show_dashboard() -> None:
                 st.session_state.page = "patient_detail"
                 st.session_state.selected_patient_id = row["_id"]
                 st.rerun()
+
+
+def _show_phase_timeline(patients: list[dict], phases: list[dict]) -> None:
+    """
+    Render a horizontal timeline with one node per recovery phase.
+    Patient names appear above the node that matches their current phase.
+    """
+    # Group patient names by their current phase id
+    phase_patients: dict[int, list[str]] = {}
+    for p in patients:
+        phase_patients.setdefault(p["current_phase_id"], []).append(p["name"])
+
+    # Max stack height drives figure height
+    max_stack = max((len(v) for v in phase_patients.values()), default=0)
+    fig_height = max(2.8, 1.8 + max_stack * 0.45)
+
+    n = len(phases)
+    fig, ax = plt.subplots(figsize=(13, fig_height))
+    fig.patch.set_facecolor("#EEF2F7")
+    ax.set_facecolor("#EEF2F7")
+
+    # Horizontal backbone
+    ax.plot([1, n], [0, 0], color="#3A7FBD", linewidth=2.5, zorder=1, solid_capstyle="round")
+
+    for i, phase in enumerate(phases):
+        x = i + 1
+        pid = phase["id"]
+        names = phase_patients.get(pid, [])
+        occupied = bool(names)
+
+        # Phase node
+        node_color = "#3A7FBD" if occupied else "#C5D8EC"
+        ax.scatter([x], [0], s=150, color=node_color, zorder=3, edgecolors="white", linewidths=2)
+
+        # Phase name below the line (rotated so they don't overlap)
+        ax.text(
+            x, -0.12, phase["name"],
+            ha="right", va="top", fontsize=7,
+            color="#1C2B3A", rotation=38, rotation_mode="anchor",
+        )
+
+        # Patient name badges above the node
+        for j, name in enumerate(names):
+            y = 0.22 + j * 0.40
+            # Connector tick
+            ax.plot([x, x], [0.06, y - 0.08], color="#3A7FBD", lw=1, zorder=2)
+            ax.text(
+                x, y, name,
+                ha="center", va="bottom", fontsize=8, color="#1C2B3A", fontweight="bold",
+                bbox=dict(
+                    boxstyle="round,pad=0.3",
+                    facecolor="white",
+                    edgecolor="#3A7FBD",
+                    linewidth=1.0,
+                    alpha=0.95,
+                ),
+            )
+
+    upper = 0.35 + max_stack * 0.40
+    ax.set_xlim(0.4, n + 0.6)
+    ax.set_ylim(-0.85, upper)
+    ax.axis("off")
+    plt.tight_layout(pad=0.3)
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
 
 
 def _days_in_current_phase(patient_id: str, current_phase_id: int) -> int | None:

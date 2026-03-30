@@ -21,6 +21,21 @@ def _now_utc() -> str:
 
 # ── Phases & Requirements (static lookup) ─────────────────────────────────────
 
+def get_all_phases() -> list[dict]:
+    """
+    Return all 8 phases ordered by order_index (id, name, description, order_index).
+    Lighter than get_all_phases_with_requirements — no requirements nested.
+    """
+    sb = get_supabase()
+    result = (
+        sb.table("phases")
+        .select("id, name, description, order_index")
+        .order("order_index")
+        .execute()
+    )
+    return result.data
+
+
 def get_all_phases_with_requirements() -> list[dict]:
     """
     Return all 8 phases, each with its list of requirements nested.
