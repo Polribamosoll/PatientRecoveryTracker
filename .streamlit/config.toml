@@ -1,0 +1,15 @@
+[theme]
+base = "light"
+
+# Soft blue-gray backgrounds — calm, clinical, not harsh white
+backgroundColor      = "#EEF2F7"   # Main page: cool light blue-gray
+secondaryBackgroundColor = "#DDE5EF" # Sidebar & cards: slightly deeper
+
+# Accent color: muted teal-blue, medical-feeling
+primaryColor = "#3A7FBD"
+
+# Text: dark slate, not pure black
+textColor = "#1C2B3A"
+
+# Clean sans-serif font
+font = "sans serif"
