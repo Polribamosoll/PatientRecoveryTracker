@@ -25,7 +25,7 @@ from views.add_patient import show_add_patient
 # ── Page config ───────────────────────────────────────────────────────────────
 # Must be the very first Streamlit call in the script.
 st.set_page_config(
-    page_title="Patient Recovery Tracker",
+    page_title="Seguimiento de Recuperación de Pacientes",
     page_icon="🏥",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -48,15 +48,15 @@ def check_auth() -> None:
     # Centre the login form
     _, centre, _ = st.columns([2, 3, 2])
     with centre:
-        st.markdown("## 🏥 Patient Recovery Tracker")
-        st.markdown("Please enter your password to continue.")
-        password = st.text_input("Password", type="password", key="login_pw")
-        if st.button("Login", type="primary", use_container_width=True):
+        st.markdown("## 🏥 Seguimiento de Recuperación de Pacientes")
+        st.markdown("Introduce la contraseña para continuar.")
+        password = st.text_input("Contraseña", type="password", key="login_pw")
+        if st.button("Entrar", type="primary", use_container_width=True):
             if password == st.secrets.get("APP_PASSWORD", ""):
                 st.session_state.authenticated = True
                 st.rerun()
             else:
-                st.error("Incorrect password.")
+                st.error("Contraseña incorrecta.")
 
     st.stop()  # Block the rest of the app from rendering
 
@@ -65,23 +65,23 @@ def check_auth() -> None:
 
 def render_sidebar() -> None:
     with st.sidebar:
-        st.markdown("### 🏥 Recovery Tracker")
+        st.markdown("### 🏥 Seguimiento de Recuperación")
         st.divider()
 
-        # Navigation buttons
-        if st.button("📋  Dashboard", use_container_width=True):
+        # Botones de navegación
+        if st.button("📋  Panel principal", use_container_width=True):
             st.session_state.page = "dashboard"
             st.session_state.pop("selected_patient_id", None)
             st.rerun()
 
-        if st.button("➕  Add Patient", use_container_width=True):
+        if st.button("➕  Añadir paciente", use_container_width=True):
             st.session_state.page = "add_patient"
             st.session_state.pop("selected_patient_id", None)
             st.rerun()
 
         st.divider()
 
-        if st.button("🚪  Logout", use_container_width=True):
+        if st.button("🚪  Cerrar sesión", use_container_width=True):
             st.session_state.authenticated = False
             st.session_state.page = "dashboard"
             st.session_state.pop("selected_patient_id", None)

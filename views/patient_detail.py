@@ -33,9 +33,9 @@ from db.progress import (
 # The key events the app knows about.
 # Add more tuples here to track additional dates.
 KNOWN_EVENTS: list[tuple[str, str]] = [
-    ("surgery_date",   "Surgery Date"),
-    ("injury_date",    "Injury / Onset Date"),
-    ("last_checkup",   "Last Checkup"),
+    ("surgery_date",   "Fecha de cirugía"),
+    ("injury_date",    "Fecha de lesión / inicio"),
+    ("last_checkup",   "Última revisión"),
 ]
 
 
@@ -43,7 +43,7 @@ def show_patient_detail(patient_id: str) -> None:
     # ── Navigation breadcrumb ─────────────────────────────────────────────────
     nav_col, del_col = st.columns([6, 1])
     with nav_col:
-        if st.button("← Back to Dashboard"):
+        if st.button("← Volver al panel"):
             st.session_state.page = "dashboard"
             st.session_state.pop("selected_patient_id", None)
             st.rerun()
@@ -81,25 +81,25 @@ def show_patient_detail(patient_id: str) -> None:
     phase_info = patient.get("phases") or {}
     phase_label = phase_info.get("name", f"Phase {current_phase_id}")
     col1, col2, col3 = st.columns(3)
-    col1.metric("Current Phase", phase_label)
+    col1.metric("Fase actual", phase_label)
 
     surgery_event = events.get("surgery_date")
     if surgery_event:
         days_post_op = days_since_event(surgery_event["event_date"])
-        col2.metric("Days Post-Op", days_post_op)
+        col2.metric("Días post-op", days_post_op)
     else:
-        col2.metric("Days Post-Op", "—")
+        col2.metric("Días post-op", "—")
 
     if patient.get("date_of_birth"):
         dob = date.fromisoformat(patient["date_of_birth"])
         age = (date.today() - dob).days // 365
-        col3.metric("Age", age)
+        col3.metric("Edad", age)
 
     st.divider()
 
     # ── Key Events ────────────────────────────────────────────────────────────
-    with st.expander("Key Event Dates", expanded=True):
-        st.caption("Record important dates. These drive time-based requirement checks.")
+    with st.expander("Fechas clave", expanded=True):
+        st.caption("Registra las fechas importantes. Se usan para los requisitos basados en tiempo.")
         event_cols = st.columns(len(KNOWN_EVENTS))
 
         for i, (event_key, event_label) in enumerate(KNOWN_EVENTS):
@@ -114,17 +114,17 @@ def show_patient_detail(patient_id: str) -> None:
                     max_value=date.today(),
                     key=f"event_{patient_id}_{event_key}",
                 )
-                if st.button("Save", key=f"save_event_{patient_id}_{event_key}"):
+                if st.button("Guardar", key=f"save_event_{patient_id}_{event_key}"):
                     upsert_patient_event(
                         patient_id, event_key, event_label, new_date
                     )
-                    st.success(f"{event_label} saved.")
+                    st.success(f"{event_label} guardado.")
                     st.rerun()
 
     st.divider()
 
     # ── Phases & Requirements ─────────────────────────────────────────────────
-    st.subheader("Recovery Phases")
+    st.subheader("Fases de recuperación")
 
     for phase in all_phases:
         phase_id   = phase["id"]
@@ -139,7 +139,7 @@ def show_patient_detail(patient_id: str) -> None:
         if is_past:
             label = f"✅ {phase_name}"
         elif is_current:
-            label = f"▶ {phase_name}  *(current)*"
+            label = f"▶ {phase_name}  *(actual)*"
         else:
             label = f"🔒 {phase_name}"
 
@@ -149,7 +149,7 @@ def show_patient_detail(patient_id: str) -> None:
                 st.caption(phase["description"])
 
             if not reqs:
-                st.info("No requirements defined for this phase.")
+                st.info("No hay requisitos definidos para esta fase.")
                 continue
 
             # Render each requirement
@@ -169,7 +169,7 @@ def show_patient_detail(patient_id: str) -> None:
                         status_text = f"{elapsed} / {threshold} days"
                     else:
                         status_icon = "❓"
-                        status_text = f"('{event_key}' not recorded yet)"
+                        status_text = f"('{event_key}' aún no registrado)"
 
                     # Show as a disabled, informational row
                     rcol1, rcol2 = st.columns([5, 2])
@@ -198,7 +198,7 @@ def show_patient_detail(patient_id: str) -> None:
 
     # ── Advance Phase ─────────────────────────────────────────────────────────
     if current_phase_id < 8:
-        st.subheader("Advance to Next Phase")
+        st.subheader("Avanzar a la siguiente fase")
 
         # Count how many requirements are satisfied in the current phase
         current_phase = next(p for p in all_phases if p["id"] == current_phase_id)
@@ -216,31 +216,31 @@ def show_patient_detail(patient_id: str) -> None:
                     met_count += 1
 
         all_met = met_count == total
-        st.progress(met_count / total if total else 1.0, text=f"{met_count} / {total} requirements met")
+        st.progress(met_count / total if total else 1.0, text=f"{met_count} / {total} requisitos completados")
 
         if not all_met:
-            st.warning("Complete all requirements above before advancing.")
+            st.warning("Completa todos los requisitos anteriores antes de avanzar.")
 
-        advance_label = f"Advance to Phase {current_phase_id + 1} →"
+        advance_label = f"Avanzar a la fase {current_phase_id + 1} →"
         if st.button(advance_label, disabled=not all_met, type="primary"):
             new_phase = advance_patient_phase(patient_id, current_phase_id)
-            st.success(f"Patient advanced to Phase {new_phase}!")
+            st.success(f"¡Paciente avanzado a la fase {new_phase}!")
             st.rerun()
     else:
-        st.success("🎉 Patient has completed all 8 phases — full recovery!")
+        st.success("🎉 ¡El paciente ha completado las 8 fases — recuperación completa!")
 
     st.divider()
 
     # ── Notes ─────────────────────────────────────────────────────────────────
-    with st.expander("Patient Notes"):
+    with st.expander("Notas del paciente"):
         current_notes = patient.get("notes") or ""
         new_notes = st.text_area(
-            "Notes",
+            "Notas",
             value=current_notes,
             height=150,
             key=f"notes_{patient_id}",
             label_visibility="collapsed",
         )
-        if st.button("Save Notes"):
+        if st.button("Guardar notas"):
             update_patient_notes(patient_id, new_notes)
-            st.success("Notes saved.")
+            st.success("Notas guardadas.")

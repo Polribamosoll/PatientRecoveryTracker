@@ -16,34 +16,34 @@ from db.patients import create_patient
 
 
 def show_add_patient() -> None:
-    if st.button("← Back to Dashboard"):
+    if st.button("← Volver al panel"):
         st.session_state.page = "dashboard"
         st.rerun()
 
-    st.title("Add New Patient")
-    st.caption("Fill in the patient details below. All fields except Name are optional.")
+    st.title("Añadir nuevo paciente")
+    st.caption("Rellena los datos del paciente. Todos los campos excepto el nombre son opcionales.")
 
     with st.form("add_patient_form", clear_on_submit=True):
-        name = st.text_input("Full Name *", placeholder="e.g. Maria Garcia")
+        name = st.text_input("Nombre completo *", placeholder="p. ej. Maria García")
 
         dob = st.date_input(
-            "Date of Birth",
+            "Fecha de nacimiento",
             value=None,
             min_value=date(1900, 1, 1),
             max_value=date.today(),
         )
 
         notes = st.text_area(
-            "Initial Notes",
-            placeholder="Any relevant background, diagnosis, allergies…",
+            "Notas iniciales",
+            placeholder="Antecedentes relevantes, diagnóstico, alergias…",
             height=100,
         )
 
-        submitted = st.form_submit_button("Create Patient", type="primary")
+        submitted = st.form_submit_button("Crear paciente", type="primary")
 
     if submitted:
         if not name.strip():
-            st.error("Patient name is required.")
+            st.error("El nombre del paciente es obligatorio.")
             return
 
         patient = create_patient(
@@ -52,7 +52,7 @@ def show_add_patient() -> None:
             notes=notes.strip(),
         )
 
-        st.success(f"Patient **{patient['name']}** created successfully!")
+        st.success(f"Paciente **{patient['name']}** creado correctamente.")
 
         # Navigate directly to the new patient's detail page
         st.session_state.page = "patient_detail"
