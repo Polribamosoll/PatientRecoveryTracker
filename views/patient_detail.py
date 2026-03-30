@@ -19,7 +19,7 @@ from datetime import date
 
 import streamlit as st
 
-from db.patients import get_patient, advance_patient_phase, update_patient_notes
+from db.patients import get_patient, advance_patient_phase, update_patient_notes, delete_patient
 from db.progress import (
     get_all_phases_with_requirements,
     get_patient_events,
@@ -41,10 +41,15 @@ KNOWN_EVENTS: list[tuple[str, str]] = [
 
 def show_patient_detail(patient_id: str) -> None:
     # ── Navigation breadcrumb ─────────────────────────────────────────────────
-    if st.button("← Back to Dashboard"):
-        st.session_state.page = "dashboard"
-        st.session_state.pop("selected_patient_id", None)
-        st.rerun()
+    nav_col, del_col = st.columns([6, 1])
+    with nav_col:
+        if st.button("← Back to Dashboard"):
+            st.session_state.page = "dashboard"
+            st.session_state.pop("selected_patient_id", None)
+            st.rerun()
+    with del_col:
+        if st.button("🗑 Eliminar paciente", type="secondary"):
+            st.session_state[f"confirm_delete_{patient_id}"] = True
 
     # ── Load data ─────────────────────────────────────────────────────────────
     patient  = get_patient(patient_id)
@@ -53,6 +58,22 @@ def show_patient_detail(patient_id: str) -> None:
     all_phases = get_all_phases_with_requirements()    # all 8 phases with reqs
 
     current_phase_id = patient["current_phase_id"]
+
+    # ── Confirm delete dialog ─────────────────────────────────────────────────
+    if st.session_state.get(f"confirm_delete_{patient_id}"):
+        st.error(f"¿Seguro que quieres eliminar a **{patient['name']}**? Esta acción es irreversible y borrará todos sus datos.")
+        confirm_col, cancel_col = st.columns([1, 5])
+        with confirm_col:
+            if st.button("Sí, eliminar", type="primary"):
+                delete_patient(patient_id)
+                st.session_state.pop(f"confirm_delete_{patient_id}", None)
+                st.session_state.page = "dashboard"
+                st.session_state.pop("selected_patient_id", None)
+                st.rerun()
+        with cancel_col:
+            if st.button("Cancelar"):
+                st.session_state.pop(f"confirm_delete_{patient_id}", None)
+                st.rerun()
 
     # ── Header ────────────────────────────────────────────────────────────────
     st.title(patient["name"])

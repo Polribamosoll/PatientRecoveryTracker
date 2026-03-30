@@ -148,3 +148,12 @@ def update_patient_notes(patient_id: str, notes: str) -> None:
     get_supabase().table("patients").update(
         {"notes": notes}
     ).eq("id", patient_id).execute()
+
+
+def delete_patient(patient_id: str) -> None:
+    """
+    Permanently delete a patient and all related data.
+    Relies on CASCADE DELETE in the database schema to remove
+    patient_events, patient_phase_progress, and patient_requirement_progress.
+    """
+    get_supabase().table("patients").delete().eq("id", patient_id).execute()
