@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS phase_requirements (
                           CHECK (requirement_type IN ('manual', 'time_based')),
     days_threshold    INTEGER,
     event_key         TEXT,
-    order_index       INTEGER NOT NULL DEFAULT 0
+    order_index       INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (phase_id, order_index)
 );
 
 -- ── 3. PATIENTS ───────────────────────────────────────────────
@@ -132,7 +133,8 @@ INSERT INTO phase_requirements (phase_id, description, requirement_type, days_th
 (8, 'Al menos 151 días desde la cirugía',                                  'time_based', 151, 'surgery_date', 1),
 (8, 'Retorno completo al nivel de actividad previo a la lesión',           'manual',     NULL, NULL,          2),
 (8, 'Educación al paciente sobre prevención de lesiones completada',       'manual',     NULL, NULL,          3),
-(8, 'Carta de alta / plan de seguimiento documentado',                     'manual',     NULL, NULL,          4);
+(8, 'Carta de alta / plan de seguimiento documentado',                     'manual',     NULL, NULL,          4)
+ON CONFLICT (phase_id, order_index) DO NOTHING;
 
 -- ============================================================
 -- ROW-LEVEL SECURITY (opcional — recomendado si se añade auth)
