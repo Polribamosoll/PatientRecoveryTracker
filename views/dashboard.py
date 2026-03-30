@@ -58,14 +58,38 @@ def show_dashboard() -> None:
     df = pd.DataFrame(rows)
 
     # Render each patient as a clickable row
-    st.subheader(f"{len(patients)} patient(s)")
+    st.markdown(f"### {len(patients)} PATIENT{'S' if len(patients) != 1 else ''}")
 
-    # Column headers
+    # Column headers with styled background
+    st.markdown(
+        """
+        <style>
+        .table-header {
+            background-color: #3A7FBD;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 4px;
+        }
+        .table-header span {
+            color: white;
+            font-weight: 700;
+            font-size: 0.78rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     hcols = st.columns([3, 4, 2, 2, 2])
     for col, header in zip(hcols, ["Name", "Current Phase", "Days in Phase", "Added", ""]):
-        col.markdown(f"**{header}**")
+        col.markdown(
+            f'<div class="table-header"><span>{header}</span></div>',
+            unsafe_allow_html=True,
+        )
 
-    st.divider()
+    st.markdown("<div style='margin-top:4px'></div>", unsafe_allow_html=True)
 
     for _, row in df.iterrows():
         cols = st.columns([3, 4, 2, 2, 2])
