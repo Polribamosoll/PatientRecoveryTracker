@@ -19,8 +19,14 @@ from db.progress import get_all_phases
 
 
 def show_dashboard() -> None:
-    st.title("Panel de pacientes")
-    st.caption("Resumen de todos los pacientes y su progreso de recuperación.")
+    patients = get_all_patients()
+
+    title_col, count_col = st.columns([7, 3])
+    with title_col:
+        st.title("Panel de pacientes")
+        st.caption("Resumen de todos los pacientes y su progreso de recuperación.")
+    with count_col:
+        st.metric("Pacientes activos", len(patients))
 
     col_refresh, col_add = st.columns([8, 2])
     with col_add:
@@ -30,13 +36,12 @@ def show_dashboard() -> None:
 
     st.divider()
 
-    patients = get_all_patients()
-
     if not patients:
         st.info("No hay pacientes aún. Usa **+ Añadir paciente** para empezar.")
         return
 
     # Phase timeline chart
+
     phases = get_all_phases()
     _show_phase_timeline(patients, phases)
 
