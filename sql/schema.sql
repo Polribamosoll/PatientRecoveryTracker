@@ -137,6 +137,14 @@ INSERT INTO phase_requirements (phase_id, description, requirement_type, days_th
 ON CONFLICT (phase_id, order_index) DO NOTHING;
 
 -- ============================================================
+-- MIGRATION — new patient profile columns
+-- Run once in the Supabase SQL editor.
+-- ============================================================
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS gender             TEXT;
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS previous_injuries  TEXT;
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS sports_practiced   TEXT;
+
+-- ============================================================
 -- ROW-LEVEL SECURITY (opcional — recomendado si se añade auth)
 -- ============================================================
 -- ALTER TABLE patients ENABLE ROW LEVEL SECURITY;

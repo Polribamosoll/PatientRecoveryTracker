@@ -45,7 +45,7 @@ def get_patient(patient_id: str) -> dict:
     sb = get_supabase()
     result = (
         sb.table("patients")
-        .select("id, name, date_of_birth, current_phase_id, notes, created_at, phases(id, name, description, order_index)")
+        .select("id, name, date_of_birth, gender, previous_injuries, sports_practiced, current_phase_id, notes, created_at, phases(id, name, description, order_index)")
         .eq("id", patient_id)
         .single()
         .execute()
@@ -75,6 +75,9 @@ def create_patient(
     name: str,
     dob: Optional[date],
     notes: str,
+    gender: Optional[str] = None,
+    previous_injuries: Optional[str] = None,
+    sports_practiced: Optional[str] = None,
 ) -> dict:
     """
     Insert a new patient starting at Phase 1.
@@ -90,6 +93,9 @@ def create_patient(
             "name": name,
             "date_of_birth": dob.isoformat() if dob else None,
             "notes": notes,
+            "gender": gender or None,
+            "previous_injuries": previous_injuries or None,
+            "sports_practiced": sports_practiced or None,
             "current_phase_id": 1,
         })
         .execute()
@@ -148,6 +154,22 @@ def update_patient_notes(patient_id: str, notes: str) -> None:
     get_supabase().table("patients").update(
         {"notes": notes}
     ).eq("id", patient_id).execute()
+
+
+def update_patient_info(
+    patient_id: str,
+    dob: Optional[date],
+    gender: Optional[str],
+    previous_injuries: Optional[str],
+    sports_practiced: Optional[str],
+) -> None:
+    """Persist demographic/profile fields for a patient."""
+    get_supabase().table("patients").update({
+        "date_of_birth":    dob.isoformat() if dob else None,
+        "gender":           gender or None,
+        "previous_injuries": previous_injuries or None,
+        "sports_practiced": sports_practiced or None,
+    }).eq("id", patient_id).execute()
 
 
 def delete_patient(patient_id: str) -> None:

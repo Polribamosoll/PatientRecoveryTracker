@@ -17,10 +17,12 @@ from __future__ import annotations
 
 from datetime import date
 
+import matplotlib.pyplot as plt
 import streamlit as st
 
-from db.patients import get_patient, advance_patient_phase, update_patient_notes, delete_patient
+from db.patients import get_patient, advance_patient_phase, update_patient_notes, delete_patient, update_patient_info
 from db.progress import (
+    get_all_phases,
     get_all_phases_with_requirements,
     get_patient_events,
     get_patient_requirement_progress,
@@ -95,6 +97,10 @@ def show_patient_detail(patient_id: str) -> None:
         age = (date.today() - dob).days // 365
         col3.metric("Edad", age)
 
+    # ── Phase Timeline ────────────────────────────────────────────────────────
+    phases_simple = get_all_phases()
+    _show_patient_timeline(current_phase_id, phases_simple)
+
     st.divider()
 
     # ── Key Events ────────────────────────────────────────────────────────────
@@ -120,6 +126,59 @@ def show_patient_detail(patient_id: str) -> None:
                     )
                     st.success(f"{event_label} guardado.")
                     st.rerun()
+
+    # ── Patient Info ──────────────────────────────────────────────────────────
+    with st.expander("Información del paciente", expanded=False):
+        st.caption("Datos demográficos y antecedentes del paciente.")
+        info_col1, info_col2 = st.columns(2)
+
+        with info_col1:
+            current_dob = (
+                date.fromisoformat(patient["date_of_birth"])
+                if patient.get("date_of_birth") else None
+            )
+            new_dob = st.date_input(
+                "Fecha de nacimiento",
+                value=current_dob,
+                min_value=date(1900, 1, 1),
+                max_value=date.today(),
+                key=f"info_dob_{patient_id}",
+            )
+            gender_options = ["", "Masculino", "Femenino", "Otro", "No especificado"]
+            current_gender = patient.get("gender") or ""
+            gender_index = gender_options.index(current_gender) if current_gender in gender_options else 0
+            new_gender = st.selectbox(
+                "Género",
+                options=gender_options,
+                index=gender_index,
+                key=f"info_gender_{patient_id}",
+            )
+
+        with info_col2:
+            new_injuries = st.text_area(
+                "Lesiones previas",
+                value=patient.get("previous_injuries") or "",
+                height=100,
+                placeholder="p. ej. Esguince de tobillo 2021, rotura fibrilar isquiotibial…",
+                key=f"info_injuries_{patient_id}",
+            )
+            new_sports = st.text_input(
+                "Deportes practicados",
+                value=patient.get("sports_practiced") or "",
+                placeholder="p. ej. Fútbol, natación, ciclismo…",
+                key=f"info_sports_{patient_id}",
+            )
+
+        if st.button("Guardar información", key=f"save_info_{patient_id}"):
+            update_patient_info(
+                patient_id,
+                dob=new_dob if new_dob else None,
+                gender=new_gender if new_gender else None,
+                previous_injuries=new_injuries.strip() or None,
+                sports_practiced=new_sports.strip() or None,
+            )
+            st.success("Información guardada.")
+            st.rerun()
 
     st.divider()
 
@@ -244,3 +303,60 @@ def show_patient_detail(patient_id: str) -> None:
         if st.button("Guardar notas"):
             update_patient_notes(patient_id, new_notes)
             st.success("Notas guardadas.")
+
+
+def _show_patient_timeline(current_phase_id: int, phases: list[dict]) -> None:
+    """
+    Horizontal timeline for a single patient.
+    Past phases → filled grey-blue, current → highlighted blue + larger,
+    future phases → empty/light.  Phase names appear below each node.
+    """
+    n = len(phases)
+    fig, ax = plt.subplots(figsize=(13, 2.2))
+    fig.patch.set_facecolor("#EEF2F7")
+    ax.set_facecolor("#EEF2F7")
+
+    # Backbone — split into completed and pending segments
+    if current_phase_id > 1:
+        ax.plot([1, current_phase_id], [0, 0], color="#3A7FBD", linewidth=2.5, zorder=1, solid_capstyle="round")
+    if current_phase_id < n:
+        ax.plot([current_phase_id, n], [0, 0], color="#C5D8EC", linewidth=2.5, zorder=1, solid_capstyle="round")
+
+    for i, phase in enumerate(phases):
+        x = i + 1
+        pid = phase["id"]
+
+        if pid < current_phase_id:
+            # Completed phase
+            color, size, edgecolor, lw = "#3A7FBD", 120, "white", 2
+        elif pid == current_phase_id:
+            # Current phase — bigger, brighter, with a label above
+            color, size, edgecolor, lw = "#1A5FA8", 260, "white", 3
+            ax.text(
+                x, 0.22, "ACTUAL",
+                ha="center", va="bottom", fontsize=7.5, color="#1A5FA8",
+                fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                          edgecolor="#1A5FA8", linewidth=1.2, alpha=0.95),
+            )
+            ax.plot([x, x], [0.07, 0.14], color="#1A5FA8", lw=1.2, zorder=2)
+        else:
+            # Future phase
+            color, size, edgecolor, lw = "#C5D8EC", 100, "#8FAFC8", 1.5
+
+        ax.scatter([x], [0], s=size, color=color, zorder=3,
+                   edgecolors=edgecolor, linewidths=lw)
+
+        # Phase name below the line
+        ax.text(
+            x, -0.12, phase["name"],
+            ha="right", va="top", fontsize=7,
+            color="#1C2B3A", rotation=38, rotation_mode="anchor",
+        )
+
+    ax.set_xlim(0.4, n + 0.6)
+    ax.set_ylim(-0.85, 0.65)
+    ax.axis("off")
+    plt.tight_layout(pad=0.3)
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
