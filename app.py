@@ -48,7 +48,11 @@ def check_auth() -> None:
     # Centre the login form
     _, centre, _ = st.columns([2, 3, 2])
     with centre:
-        st.markdown("## 🏥 Seguimiento de Recuperación de Pacientes")
+        st.image("assets/perfil.jpg", width=120)
+        st.markdown("## Seguimiento Pacientes")
+        st.markdown("### ROC GARCIA SANTAMARIA")
+        st.markdown("**@reactivarodilla**")
+        st.divider()
         st.markdown("Introduce la contraseña para continuar.")
         password = st.text_input("Contraseña", type="password", key="login_pw")
         if st.button("Entrar", type="primary", use_container_width=True):
