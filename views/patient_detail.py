@@ -258,7 +258,7 @@ def show_patient_detail(patient_id: str) -> None:
     st.divider()
 
     # ── Advance Phase ─────────────────────────────────────────────────────────
-    if current_phase_id < 8:
+    if current_phase_id < 6:
         st.subheader("Avanzar a la siguiente fase")
 
         # Count how many requirements are satisfied in the current phase
@@ -280,15 +280,20 @@ def show_patient_detail(patient_id: str) -> None:
         st.progress(met_count / total if total else 1.0, text=f"{met_count} / {total} requisitos completados")
 
         if not all_met:
-            st.warning("Completa todos los requisitos anteriores antes de avanzar.")
+            missing = total - met_count
+            st.warning(f"Faltan {missing} requisito{'s' if missing != 1 else ''} por completar antes de avanzar.")
 
-        advance_label = f"Avanzar a la fase {current_phase_id + 1} →"
+        # Look up the next phase name for the button label
+        next_phase_id   = current_phase_id + 1
+        next_phase_obj  = next((p for p in all_phases if p["id"] == next_phase_id), None)
+        next_phase_name = next_phase_obj["name"] if next_phase_obj else f"Fase {next_phase_id}"
+        advance_label   = f"Avanzar a {next_phase_name} →"
+
         if st.button(advance_label, disabled=not all_met, type="primary"):
-            new_phase = advance_patient_phase(patient_id, current_phase_id)
-            st.success(f"¡Paciente avanzado a la fase {new_phase}!")
+            advance_patient_phase(patient_id, current_phase_id)
             st.rerun()
     else:
-        st.success("🎉 ¡El paciente ha completado las 8 fases — recuperación completa!")
+        st.success("🎉 ¡El paciente ha completado todas las fases — listo para volver al deporte!")
 
     st.divider()
 

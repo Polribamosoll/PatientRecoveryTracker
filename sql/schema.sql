@@ -72,68 +72,64 @@ CREATE TABLE IF NOT EXISTS patient_requirement_progress (
 );
 
 -- ============================================================
--- SEED DATA — 8 fases y sus requisitos (en español)
+-- SEED DATA — 6 fases Aspetar y sus requisitos (en español)
 -- ============================================================
 
 INSERT INTO phases (id, name, description, order_index) VALUES
-(1, 'Fase 1 — Post-op inmediato',        'Días 0–3: Estabilización y control del dolor.',                     1),
-(2, 'Fase 2 — Recuperación temprana',    'Días 4–14: Monitorización de la herida y movilidad básica.',        2),
-(3, 'Fase 3 — Cicatrización',            'Días 15–30: Cierre de la herida y vigilancia de infecciones.',      3),
-(4, 'Fase 4 — Restauración de movilidad','Días 31–60: Recuperación del rango de movimiento.',                 4),
-(5, 'Fase 5 — Fortalecimiento',          'Días 61–90: Ejercicios de resistencia progresiva.',                 5),
-(6, 'Fase 6 — Entrenamiento funcional',  'Días 91–120: Ejercicios funcionales específicos de la actividad.',  6),
-(7, 'Fase 7 — Retorno a la actividad',   'Días 121–150: Reincorporación gradual a las actividades normales.', 7),
-(8, 'Fase 8 — Recuperación completa',    'Días 151+: Planificación del alta y seguimiento a largo plazo.',    8)
+(1, 'Fase 0 — Pre-operatorio',    'Antes de la cirugía: criterios de entrada para operar.',                               1),
+(2, 'Fase 1 — 0–6 semanas',       'Semanas 0–6: protección, recuperación de ROM y activación muscular.',                  2),
+(3, 'Fase 2 — 6–12 semanas',      'Semanas 6–12: fuerza básica y control motor.',                                         3),
+(4, 'Fase 3 — 12–18 semanas',     'Semanas 12–18: fuerza, inicio de impacto y running.',                                  4),
+(5, 'Fase 4 — 18–24 semanas',     'Semanas 18–24: cambio de dirección y deporte específico inicial.',                     5),
+(6, 'Fase 5 — 24–30 semanas',     'Semanas 24–30: alto rendimiento y vuelta al deporte.',                                 6)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO phase_requirements (phase_id, description, requirement_type, days_threshold, event_key, order_index) VALUES
--- Fase 1
-(1, 'Constantes vitales estables (TA, FC, SpO₂ en rango normal)', 'manual',     NULL, NULL,           1),
-(1, 'Puntuación de dolor ≤ 6 en la ENR',                          'manual',     NULL, NULL,           2),
-(1, 'Sin signos de complicación quirúrgica inmediata',             'manual',     NULL, NULL,           3),
-(1, 'El paciente tolera líquidos por vía oral',                    'manual',     NULL, NULL,           4),
+-- Fase 0 — Pre-operatorio
+(1, 'Extensión completa de rodilla',      'manual', NULL, NULL, 1),
+(1, 'Flexión de rodilla >120°',           'manual', NULL, NULL, 2),
+(1, 'Inflamación mínima',                 'manual', NULL, NULL, 3),
+(1, 'Sin lag de cuádriceps',              'manual', NULL, NULL, 4),
+(1, 'Marcha normal',                      'manual', NULL, NULL, 5),
 
--- Fase 2
-(2, 'Al menos 4 días desde la cirugía',                            'time_based', 4,    'surgery_date', 1),
-(2, 'Herida revisada — sin signos de infección',                   'manual',     NULL, NULL,           2),
-(2, 'Puntuación de dolor ≤ 4 en la ENR',                          'manual',     NULL, NULL,           3),
-(2, 'Paciente deambula con asistencia',                            'manual',     NULL, NULL,           4),
+-- Fase 1 — 0–6 semanas
+(2, 'Extensión completa de rodilla',      'manual', NULL, NULL, 1),
+(2, 'Flexión progresiva >120°',           'manual', NULL, NULL, 2),
+(2, 'Disminución de inflamación',         'manual', NULL, NULL, 3),
+(2, 'Activación de cuádriceps',           'manual', NULL, NULL, 4),
+(2, 'Marcha sin muletas',                 'manual', NULL, NULL, 5),
 
--- Fase 3
-(3, 'Al menos 15 días desde la cirugía',                           'time_based', 15,   'surgery_date', 1),
-(3, 'Herida completamente cerrada o con buena evolución',          'manual',     NULL, NULL,           2),
-(3, 'Puntos/grapas retirados o programados',                       'manual',     NULL, NULL,           3),
-(3, 'Paciente tolera alimentación sólida',                         'manual',     NULL, NULL,           4),
+-- Fase 2 — 6–12 semanas
+(3, 'Extensión completa de rodilla',      'manual', NULL, NULL, 1),
+(3, 'Flexión ≥130°',                      'manual', NULL, NULL, 2),
+(3, '15 sentadillas unilaterales a 90° (SL squat)', 'manual', NULL, NULL, 3),
+(3, '20 sentadillas bilaterales a >90° (DL squat)', 'manual', NULL, NULL, 4),
+(3, 'Inicio de saltos sin dolor',         'manual', NULL, NULL, 5),
 
--- Fase 4
-(4, 'Al menos 31 días desde la cirugía',                           'time_based', 31,   'surgery_date', 1),
-(4, 'ROM mejorado ≥ 20° respecto al nivel post-op inicial',        'manual',     NULL, NULL,           2),
-(4, 'Capaz de caminar 100 m sin dolor significativo',              'manual',     NULL, NULL,           3),
-(4, 'Sesiones de fisioterapia iniciadas',                          'manual',     NULL, NULL,           4),
+-- Fase 3 — 12–18 semanas (criterios para correr)
+(4, 'Al menos 12 semanas desde la cirugía (84 días)', 'time_based', 84, 'surgery_date', 1),
+(4, 'Sin inflamación articular',                      'manual', NULL, NULL, 2),
+(4, 'ROM completo (extensión total + flexión ≥135°)', 'manual', NULL, NULL, 3),
+(4, 'Dolor 0/10 en reposo y actividad',               'manual', NULL, NULL, 4),
+(4, '30 pogos unipodales correctos',                  'manual', NULL, NULL, 5),
+(4, 'LSI cuádriceps >70%',                            'manual', NULL, NULL, 6),
+(4, 'IKDC >64%',                                      'manual', NULL, NULL, 7),
 
--- Fase 5
-(5, 'Al menos 61 días desde la cirugía',                                'time_based', 61,  'surgery_date', 1),
-(5, 'Fuerza ≥ 50% del lado contralateral',                              'manual',     NULL, NULL,          2),
-(5, 'Sin inflamación ni derrame en reposo',                             'manual',     NULL, NULL,          3),
-(5, 'Paciente gestiona de forma autónoma el plan de ejercicios en casa','manual',     NULL, NULL,          4),
+-- Fase 4 — 18–24 semanas (criterios COD / deporte)
+(5, 'SL squat a 90° con técnica correcta',  'manual', NULL, NULL, 1),
+(5, 'Saltos multidireccionales correctos',  'manual', NULL, NULL, 2),
+(5, 'Protocolo de running completado',      'manual', NULL, NULL, 3),
+(5, 'Fuerza >80% LSI',                      'manual', NULL, NULL, 4),
+(5, 'Saltos >80% LSI',                      'manual', NULL, NULL, 5),
+(5, 'RSI >80%',                             'manual', NULL, NULL, 6),
 
--- Fase 6
-(6, 'Al menos 91 días desde la cirugía',                                'time_based', 91,  'surgery_date', 1),
-(6, 'Puntuación del test de movimiento funcional ≥ 14',                 'manual',     NULL, NULL,          2),
-(6, 'Sin dolor en las tareas funcionales diarias',                      'manual',     NULL, NULL,          3),
-(6, 'Pruebas de equilibrio y propiocepción dentro de la normalidad',    'manual',     NULL, NULL,          4),
-
--- Fase 7
-(7, 'Al menos 121 días desde la cirugía',                'time_based', 121, 'surgery_date', 1),
-(7, 'Autorizado para deporte/actividad de bajo impacto', 'manual',     NULL, NULL,           2),
-(7, 'Fuerza ≥ 80% del lado contralateral',               'manual',     NULL, NULL,           3),
-(7, 'Disposición psicológica confirmada',                'manual',     NULL, NULL,           4),
-
--- Fase 8
-(8, 'Al menos 151 días desde la cirugía',                                  'time_based', 151, 'surgery_date', 1),
-(8, 'Retorno completo al nivel de actividad previo a la lesión',           'manual',     NULL, NULL,          2),
-(8, 'Educación al paciente sobre prevención de lesiones completada',       'manual',     NULL, NULL,          3),
-(8, 'Carta de alta / plan de seguimiento documentado',                     'manual',     NULL, NULL,          4)
+-- Fase 5 — 24–30 semanas (criterios de vuelta al deporte)
+(6, 'Cuádriceps >90% LSI',                            'manual', NULL, NULL, 1),
+(6, 'Isquiotibiales >90% LSI',                        'manual', NULL, NULL, 2),
+(6, 'CMJ >90% respecto al lado contralateral',        'manual', NULL, NULL, 3),
+(6, 'Hop test >90%',                                  'manual', NULL, NULL, 4),
+(6, 'SL squat perfecto (técnica y control)',           'manual', NULL, NULL, 5),
+(6, 'Mecánica simétrica en running y COD',            'manual', NULL, NULL, 6)
 ON CONFLICT (phase_id, order_index) DO NOTHING;
 
 -- ============================================================

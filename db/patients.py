@@ -120,7 +120,7 @@ def advance_patient_phase(patient_id: str, current_phase_id: int) -> int:
 
     Returns the new phase id, or current_phase_id if already at 8.
     """
-    if current_phase_id >= 8:
+    if current_phase_id >= 6:
         return current_phase_id  # already at final phase
 
     next_phase_id = current_phase_id + 1
@@ -131,7 +131,7 @@ def advance_patient_phase(patient_id: str, current_phase_id: int) -> int:
     sb.table("patient_phase_progress").update(
         {"completed_at": now}
     ).eq("patient_id", patient_id).eq("phase_id", current_phase_id).is_(
-        "completed_at", "null"
+        "completed_at", None
     ).execute()
 
     # 2. Open the next phase-progress row
