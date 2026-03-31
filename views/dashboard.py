@@ -99,7 +99,7 @@ def show_dashboard() -> None:
 
     for _, row in df.iterrows():
         cols = st.columns([3, 4, 2, 2, 2])
-        cols[0].write(row["Nombre"])
+        cols[0].markdown(f"**{row['Nombre']}**")
         cols[1].write(row["Fase"])
         cols[2].write(str(row["Días en fase"]))
         cols[3].write(row["Añadido"])
