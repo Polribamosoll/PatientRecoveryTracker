@@ -114,9 +114,7 @@ def _show_phase_timeline(patients: list[dict], phases: list[dict]) -> None:
     for p in patients:
         phase_patients.setdefault(p["current_phase_id"], []).append(p["name"])
 
-    # Max stack height drives figure height
-    max_stack = max((len(v) for v in phase_patients.values()), default=0)
-    fig_height = max(2.8, 1.8 + max_stack * 0.45)
+    fig_height = 2.8
 
     n = len(phases)
     fig, ax = plt.subplots(figsize=(13, fig_height))
@@ -143,24 +141,23 @@ def _show_phase_timeline(patients: list[dict], phases: list[dict]) -> None:
             color="#1C2B3A", rotation=38, rotation_mode="anchor",
         )
 
-        # Patient name badges above the node
-        for j, name in enumerate(names):
-            y = 0.22 + j * 0.40
-            # Connector tick
-            ax.plot([x, x], [0.06, y - 0.08], color="#3A7FBD", lw=1, zorder=2)
+        # Patient count badge above the node
+        if occupied:
+            count = len(names)
+            ax.plot([x, x], [0.06, 0.14], color="#3A7FBD", lw=1, zorder=2)
             ax.text(
-                x, y, name,
-                ha="center", va="bottom", fontsize=8, color="#1C2B3A", fontweight="bold",
+                x, 0.22, str(count),
+                ha="center", va="bottom", fontsize=9, color="#1C2B3A", fontweight="bold",
                 bbox=dict(
-                    boxstyle="round,pad=0.3",
+                    boxstyle="round,pad=0.35",
                     facecolor="white",
                     edgecolor="#3A7FBD",
-                    linewidth=1.0,
+                    linewidth=1.2,
                     alpha=0.95,
                 ),
             )
 
-    upper = 0.35 + max_stack * 0.40
+    upper = 0.75
     ax.set_xlim(0.4, n + 0.6)
     ax.set_ylim(-0.85, upper)
     ax.axis("off")
