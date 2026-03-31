@@ -35,8 +35,8 @@ from db.progress import (
 # The key events the app knows about.
 # Add more tuples here to track additional dates.
 KNOWN_EVENTS: list[tuple[str, str]] = [
-    ("surgery_date",   "Fecha de cirugía"),
     ("injury_date",    "Fecha de lesión / inicio"),
+    ("surgery_date",   "Fecha de cirugía"),
     ("last_checkup",   "Última revisión"),
 ]
 
@@ -107,6 +107,7 @@ def show_patient_detail(patient_id: str) -> None:
     with st.expander("Fechas clave", expanded=True):
         st.caption("Registra las fechas importantes. Se usan para los requisitos basados en tiempo.")
         event_cols = st.columns(len(KNOWN_EVENTS))
+        new_dates: dict[str, tuple[str, object]] = {}
 
         for i, (event_key, event_label) in enumerate(KNOWN_EVENTS):
             existing = events.get(event_key)
@@ -120,12 +121,13 @@ def show_patient_detail(patient_id: str) -> None:
                     max_value=date.today(),
                     key=f"event_{patient_id}_{event_key}",
                 )
-                if st.button("Guardar", key=f"save_event_{patient_id}_{event_key}"):
-                    upsert_patient_event(
-                        patient_id, event_key, event_label, new_date
-                    )
-                    st.success(f"{event_label} guardado.")
-                    st.rerun()
+                new_dates[event_key] = (event_label, new_date)
+
+        if st.button("Guardar fechas", key=f"save_events_{patient_id}"):
+            for event_key, (event_label, new_date) in new_dates.items():
+                upsert_patient_event(patient_id, event_key, event_label, new_date)
+            st.success("Fechas guardadas.")
+            st.rerun()
 
     # ── Patient Info ──────────────────────────────────────────────────────────
     with st.expander("Información del paciente", expanded=False):
