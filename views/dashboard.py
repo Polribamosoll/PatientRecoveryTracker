@@ -89,10 +89,11 @@ def show_dashboard() -> None:
 
     hcols = st.columns([3, 4, 2, 2, 2])
     for col, header in zip(hcols, ["Nombre", "Fase actual", "Días en fase", "Añadido", ""]):
-        col.markdown(
-            f'<div class="table-header"><span>{header}</span></div>',
-            unsafe_allow_html=True,
-        )
+        if header:
+            col.markdown(
+                f'<div class="table-header"><span>{header}</span></div>',
+                unsafe_allow_html=True,
+            )
 
     st.markdown("<div style='margin-top:4px'></div>", unsafe_allow_html=True)
 
