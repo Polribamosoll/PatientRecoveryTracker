@@ -3,7 +3,21 @@
 -- Ejecutar UNA sola vez en el SQL Editor de Supabase.
 -- ============================================================
 
--- PASO 1: Borrar progreso de requisitos (los IDs de requisitos cambian)
+-- PASO 0: Crear tabla de seguimiento semanal (si no existe)
+CREATE TABLE IF NOT EXISTS patient_weekly_checks (
+    id             UUID     PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id     UUID     NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    phase_id       INTEGER  NOT NULL REFERENCES phases(id),
+    week_number    SMALLINT NOT NULL CHECK (week_number BETWEEN 1 AND 6),
+    requirement_id UUID     NOT NULL REFERENCES phase_requirements(id) ON DELETE CASCADE,
+    is_met         BOOLEAN  NOT NULL DEFAULT FALSE,
+    recorded_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    notes          TEXT,
+    UNIQUE (patient_id, phase_id, week_number, requirement_id)
+);
+
+-- PASO 1: Borrar progreso de requisitos y checks semanales (los IDs de requisitos cambian)
+DELETE FROM patient_weekly_checks;
 DELETE FROM patient_requirement_progress;
 
 -- PASO 2: Borrar todos los requisitos actuales

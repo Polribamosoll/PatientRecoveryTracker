@@ -26,8 +26,9 @@ from db.progress import (
     get_all_phases_with_requirements,
     get_patient_events,
     get_patient_requirement_progress,
+    get_all_weekly_checks,
+    save_week_checks,
     upsert_patient_event,
-    set_requirement_met,
     is_time_based_requirement_met,
     days_since_event,
 )
@@ -54,10 +55,11 @@ def show_patient_detail(patient_id: str) -> None:
             st.session_state[f"confirm_delete_{patient_id}"] = True
 
     # ── Load data ─────────────────────────────────────────────────────────────
-    patient  = get_patient(patient_id)
-    events   = get_patient_events(patient_id)          # dict keyed by event_key
-    req_prog = get_patient_requirement_progress(patient_id)  # dict keyed by req id
-    all_phases = get_all_phases_with_requirements()    # all 8 phases with reqs
+    patient           = get_patient(patient_id)
+    events            = get_patient_events(patient_id)
+    req_prog          = get_patient_requirement_progress(patient_id)
+    all_phases        = get_all_phases_with_requirements()
+    all_weekly_checks = get_all_weekly_checks(patient_id)
 
     current_phase_id = patient["current_phase_id"]
 
@@ -213,47 +215,40 @@ def show_patient_detail(patient_id: str) -> None:
                 st.info("No hay requisitos definidos para esta fase.")
                 continue
 
-            # Render each requirement
-            for req in reqs:
-                req_id   = req["id"]
-                req_type = req["requirement_type"]
-                progress = req_prog.get(req_id, {})
+            time_reqs   = [r for r in reqs if r["requirement_type"] == "time_based"]
+            manual_reqs = [r for r in reqs if r["requirement_type"] == "manual"]
 
-                if req_type == "time_based":
-                    # Auto-compute from events; not manually checkable
-                    met, elapsed = is_time_based_requirement_met(req, events)
-                    threshold    = req["days_threshold"]
-                    event_key    = req["event_key"]
+            # ── Time-based requirements (always auto-computed) ────────────
+            for req in time_reqs:
+                met, elapsed = is_time_based_requirement_met(req, events)
+                threshold = req["days_threshold"]
+                event_key = req["event_key"]
 
-                    if elapsed is not None:
-                        status_icon = "✅" if met else "⏳"
-                        status_text = f"{elapsed} / {threshold} days"
-                    else:
-                        status_icon = "❓"
-                        status_text = f"('{event_key}' aún no registrado)"
-
-                    # Show as a disabled, informational row
-                    rcol1, rcol2 = st.columns([5, 2])
-                    rcol1.markdown(f"{status_icon} &nbsp; {req['description']}")
-                    rcol2.caption(status_text)
-
+                if elapsed is not None:
+                    status_icon = "✅" if met else "⏳"
+                    status_text = f"{elapsed} / {threshold} días"
                 else:
-                    # Manual checkbox — only interactive for the current phase
-                    current_value = progress.get("is_met", False)
+                    status_icon = "❓"
+                    status_text = f"('{event_key}' aún no registrado)"
 
-                    if is_current:
-                        new_value = st.checkbox(
-                            req["description"],
-                            value=current_value,
-                            key=f"req_{patient_id}_{req_id}",
-                        )
-                        if new_value != current_value:
-                            set_requirement_met(patient_id, req_id, new_value)
-                            st.rerun()
-                    else:
-                        # Past or future: show as read-only
-                        icon = "✅" if (is_past or current_value) else "☐"
-                        st.markdown(f"{icon} &nbsp; {req['description']}")
+                rcol1, rcol2 = st.columns([5, 2])
+                rcol1.markdown(f"{status_icon} &nbsp; {req['description']}")
+                rcol2.caption(status_text)
+
+            # ── Manual requirements: weekly tracking ──────────────────────
+            if manual_reqs:
+                if time_reqs:
+                    st.divider()
+
+                phase_weekly = all_weekly_checks.get(phase_id, {})
+
+                if is_current:
+                    _render_weekly_tracking(patient_id, phase_id, manual_reqs, phase_weekly)
+                elif is_past:
+                    _render_weekly_summary(manual_reqs, phase_weekly)
+                else:
+                    for req in manual_reqs:
+                        st.markdown(f"🔒 &nbsp; {req['description']}")
 
     st.divider()
 
@@ -310,6 +305,77 @@ def show_patient_detail(patient_id: str) -> None:
         if st.button("Guardar notas"):
             update_patient_notes(patient_id, new_notes)
             st.success("Notas guardadas.")
+
+
+def _render_weekly_tracking(
+    patient_id: str,
+    phase_id: int,
+    manual_reqs: list[dict],
+    phase_weekly: dict,
+) -> None:
+    """
+    Interactive weekly check section for the current phase.
+    Shows a week selector, checkboxes for that week, a save button,
+    and a historical summary grid once data has been saved.
+    """
+    st.markdown("**Seguimiento semanal**")
+
+    weeks_done = sorted(w for w in phase_weekly if phase_weekly[w])
+    default_index = (weeks_done[-1] - 1) if weeks_done else 0
+
+    sel_col, _ = st.columns([2, 5])
+    with sel_col:
+        week = st.selectbox(
+            "Semana de control",
+            options=list(range(1, 7)),
+            index=default_index,
+            format_func=lambda w: f"Semana {w}" + (" ✓" if w in weeks_done else ""),
+            key=f"week_sel_{patient_id}_{phase_id}",
+        )
+
+    week_data = phase_weekly.get(week, {})
+    new_checks: dict[str, bool] = {}
+    for req in manual_reqs:
+        new_checks[req["id"]] = st.checkbox(
+            req["description"],
+            value=week_data.get(req["id"], False),
+            key=f"wchk_{patient_id}_{phase_id}_{week}_{req['id']}",
+        )
+
+    if st.button(
+        f"Guardar semana {week}",
+        key=f"save_wk_{patient_id}_{phase_id}_{week}",
+        type="secondary",
+    ):
+        save_week_checks(patient_id, phase_id, week, new_checks)
+        st.success(f"Semana {week} guardada.")
+        st.rerun()
+
+    if phase_weekly:
+        st.markdown("**Historial de semanas:**")
+        _render_weekly_summary(manual_reqs, phase_weekly)
+
+
+def _render_weekly_summary(manual_reqs: list[dict], phase_weekly: dict) -> None:
+    """
+    Read-only grid: requirements as rows, weeks S1–S6 as columns.
+    Cells: ✅ passed, ❌ failed, — not yet recorded.
+    """
+    if not phase_weekly:
+        st.caption("Sin datos de seguimiento semanal registrados.")
+        return
+
+    table: dict[str, list] = {
+        "Requisito": [req["description"] for req in manual_reqs]
+    }
+    for w in range(1, 7):
+        week_data = phase_weekly.get(w, {})
+        table[f"S{w}"] = [
+            ("✅" if week_data[req["id"]] else "❌") if req["id"] in week_data else "—"
+            for req in manual_reqs
+        ]
+
+    st.dataframe(table, use_container_width=True, hide_index=True)
 
 
 def _show_patient_timeline(current_phase_id: int, phases: list[dict]) -> None:

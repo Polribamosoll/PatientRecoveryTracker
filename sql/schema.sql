@@ -71,6 +71,21 @@ CREATE TABLE IF NOT EXISTS patient_requirement_progress (
     UNIQUE (patient_id, requirement_id)
 );
 
+-- ── 7. PATIENT WEEKLY CHECKS ──────────────────────────────────
+-- Stores the pass/fail result for each manual requirement per week within a phase.
+-- week_number 1–6 corresponds to the 6 weeks of each Aspetar phase.
+CREATE TABLE IF NOT EXISTS patient_weekly_checks (
+    id             UUID     PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id     UUID     NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    phase_id       INTEGER  NOT NULL REFERENCES phases(id),
+    week_number    SMALLINT NOT NULL CHECK (week_number BETWEEN 1 AND 6),
+    requirement_id UUID     NOT NULL REFERENCES phase_requirements(id) ON DELETE CASCADE,
+    is_met         BOOLEAN  NOT NULL DEFAULT FALSE,
+    recorded_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    notes          TEXT,
+    UNIQUE (patient_id, phase_id, week_number, requirement_id)
+);
+
 -- ============================================================
 -- SEED DATA — 6 fases Aspetar y sus requisitos (en español)
 -- ============================================================

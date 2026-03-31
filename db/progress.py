@@ -132,6 +132,74 @@ def set_requirement_met(
     ).execute()
 
 
+# ── Weekly check tracking ─────────────────────────────────────────────────────
+
+def get_all_weekly_checks(patient_id: str) -> dict:
+    """
+    Return all weekly check data for a patient, grouped by phase then week.
+    Shape: {phase_id: {week_number: {requirement_id: is_met}}}
+    """
+    sb = get_supabase()
+    result = (
+        sb.table("patient_weekly_checks")
+        .select("phase_id, week_number, requirement_id, is_met")
+        .eq("patient_id", patient_id)
+        .execute()
+    )
+    data: dict = {}
+    for row in result.data:
+        (data
+            .setdefault(row["phase_id"], {})
+            .setdefault(row["week_number"], {})
+        )[row["requirement_id"]] = row["is_met"]
+    return data
+
+
+def save_week_checks(
+    patient_id: str,
+    phase_id: int,
+    week_number: int,
+    checks: dict[str, bool],
+) -> None:
+    """
+    Upsert all manual requirement checks for one week within a phase.
+    Also syncs the latest state to patient_requirement_progress so the
+    phase advancement gate reflects the most recent weekly evaluation.
+    """
+    if not checks:
+        return
+    sb = get_supabase()
+    now = _now_utc()
+
+    # 1. Upsert weekly check rows
+    sb.table("patient_weekly_checks").upsert(
+        [
+            {
+                "patient_id":     patient_id,
+                "phase_id":       phase_id,
+                "week_number":    week_number,
+                "requirement_id": req_id,
+                "is_met":         is_met,
+                "recorded_at":    now,
+            }
+            for req_id, is_met in checks.items()
+        ],
+        on_conflict="patient_id,phase_id,week_number,requirement_id",
+    ).execute()
+
+    # 2. Sync to patient_requirement_progress so the phase gate is up to date
+    for req_id, is_met in checks.items():
+        sb.table("patient_requirement_progress").upsert(
+            {
+                "patient_id":     patient_id,
+                "requirement_id": req_id,
+                "is_met":         is_met,
+                "met_at":         now if is_met else None,
+            },
+            on_conflict="patient_id,requirement_id",
+        ).execute()
+
+
 # ── Time-based requirement auto-evaluation ────────────────────────────────────
 
 def days_since_event(event_date_str: Optional[str]) -> Optional[int]:
