@@ -125,7 +125,7 @@ INSERT INTO phase_requirements (phase_id, description, requirement_type, days_th
 (4, 'Al menos 12 semanas desde la cirugía (84 días)', 'time_based', 84, 'surgery_date', 1),
 (4, 'Sin inflamación articular',                      'manual', NULL, NULL, 2),
 (4, 'ROM completo (extensión total + flexión ≥135°)', 'manual', NULL, NULL, 3),
-(4, 'Dolor 0/10 en reposo y actividad',               'manual', NULL, NULL, 4),
+(4, 'Dolor en reposo y actividad',                     'manual', NULL, NULL, 4),
 (4, '30 pogos unipodales correctos',                  'manual', NULL, NULL, 5),
 (4, 'LSI cuádriceps >70%',                            'manual', NULL, NULL, 6),
 (4, 'IKDC >64%',                                      'manual', NULL, NULL, 7),
