@@ -15,6 +15,8 @@ Pages:
   'add_patient'    → views/add_patient.py
 """
 
+import os
+
 import streamlit as st
 
 from views.dashboard import show_dashboard
@@ -56,7 +58,8 @@ def check_auth() -> None:
         st.markdown("Introduce la contraseña para continuar.")
         password = st.text_input("Contraseña", type="password", key="login_pw")
         if st.button("Entrar", type="primary", use_container_width=True):
-            if password == st.secrets.get("APP_PASSWORD", ""):
+            app_password = os.environ.get("APP_PASSWORD") or st.secrets.get("APP_PASSWORD", "")
+        if password == app_password:
                 st.session_state.authenticated = True
                 st.rerun()
             else:

@@ -7,13 +7,23 @@ created once and reused across every user session (fine for a single-
 doctor app).
 """
 
+import os
+
 import streamlit as st
 from supabase import create_client, Client
 
 
+def _get_secret(key: str) -> str:
+    """Read a secret from environment variables first, then st.secrets."""
+    value = os.environ.get(key)
+    if value:
+        return value
+    return st.secrets[key]
+
+
 @st.cache_resource
 def get_supabase() -> Client:
-    """Return a cached Supabase client built from st.secrets."""
-    url: str = st.secrets["SUPABASE_URL"]
-    key: str = st.secrets["SUPABASE_KEY"]
+    """Return a cached Supabase client."""
+    url: str = _get_secret("SUPABASE_URL")
+    key: str = _get_secret("SUPABASE_KEY")
     return create_client(url, key)
