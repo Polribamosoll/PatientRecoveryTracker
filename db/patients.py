@@ -61,12 +61,35 @@ def get_phase_history(patient_id: str) -> list[dict]:
     sb = get_supabase()
     result = (
         sb.table("patient_phase_progress")
-        .select("phase_id, started_at, completed_at, phases(name)")
+        .select("phase_id, started_at, completed_at, has_extension, phases(name)")
         .eq("patient_id", patient_id)
         .order("started_at", desc=True)
         .execute()
     )
     return result.data
+
+
+def get_phase_extension_status(patient_id: str, phase_id: int) -> bool:
+    """Return True if a 2-week extension has been granted for this phase."""
+    sb = get_supabase()
+    result = (
+        sb.table("patient_phase_progress")
+        .select("has_extension")
+        .eq("patient_id", patient_id)
+        .eq("phase_id", phase_id)
+        .maybe_single()
+        .execute()
+    )
+    if result.data:
+        return bool(result.data.get("has_extension", False))
+    return False
+
+
+def grant_phase_extension(patient_id: str, phase_id: int) -> None:
+    """Grant a 2-week extension for the patient's current phase."""
+    get_supabase().table("patient_phase_progress").update(
+        {"has_extension": True}
+    ).eq("patient_id", patient_id).eq("phase_id", phase_id).execute()
 
 
 # ── Write ─────────────────────────────────────────────────────────────────────

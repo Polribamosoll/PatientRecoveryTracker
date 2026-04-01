@@ -20,7 +20,7 @@ from datetime import date
 import matplotlib.pyplot as plt
 import streamlit as st
 
-from db.patients import get_patient, advance_patient_phase, update_patient_notes, delete_patient, update_patient_info
+from db.patients import get_patient, advance_patient_phase, update_patient_notes, delete_patient, update_patient_info, get_phase_extension_status, grant_phase_extension, get_phase_history
 from db.progress import (
     get_all_phases,
     get_all_phases_with_requirements,
@@ -62,6 +62,10 @@ def show_patient_detail(patient_id: str) -> None:
     all_weekly_checks = get_all_weekly_checks(patient_id)
 
     current_phase_id = patient["current_phase_id"]
+    has_extension     = get_phase_extension_status(patient_id, current_phase_id)
+    phase_history     = get_phase_history(patient_id)
+    # Build a quick lookup: phase_id → had extension (for past phases)
+    extension_by_phase = {h["phase_id"]: h.get("has_extension", False) for h in phase_history}
 
     # ── Confirm delete dialog ─────────────────────────────────────────────────
     if st.session_state.get(f"confirm_delete_{patient_id}"):
@@ -200,9 +204,11 @@ def show_patient_detail(patient_id: str) -> None:
 
         # Label decoration
         if is_past:
-            label = f"✅ {phase_name}"
+            ext_tag = "  *(+2 sem)*" if extension_by_phase.get(phase_id) else ""
+            label = f"✅ {phase_name}{ext_tag}"
         elif is_current:
-            label = f"▶ {phase_name}  *(actual)*"
+            ext_tag = "  *(prórroga activa)*" if has_extension else ""
+            label = f"▶ {phase_name}  *(actual)*{ext_tag}"
         else:
             label = f"🔒 {phase_name}"
 
@@ -243,7 +249,7 @@ def show_patient_detail(patient_id: str) -> None:
                 phase_weekly = all_weekly_checks.get(phase_id, {})
 
                 if is_current:
-                    _render_weekly_tracking(patient_id, phase_id, manual_reqs, phase_weekly)
+                    _render_weekly_tracking(patient_id, phase_id, manual_reqs, phase_weekly, has_extension)
                 elif is_past:
                     _render_weekly_summary(manual_reqs, phase_weekly)
                 else:
@@ -274,7 +280,30 @@ def show_patient_detail(patient_id: str) -> None:
         all_met = met_count == total
         st.progress(met_count / total if total else 1.0, text=f"{met_count} / {total} requisitos completados")
 
-        if not all_met:
+        # ── Prórroga logic ────────────────────────────────────────────────
+        phase_weekly_current = all_weekly_checks.get(current_phase_id, {})
+        week6_done = 6 in phase_weekly_current and bool(phase_weekly_current[6])
+
+        if has_extension:
+            st.info(
+                "**Prórroga activa** — Se han añadido 2 semanas adicionales a esta fase "
+                "(semanas 7 y 8 disponibles en el seguimiento). "
+                "El paciente puede avanzar a la siguiente fase cuando esté listo."
+            )
+        elif not all_met and week6_done:
+            st.warning(
+                f"Faltan {total - met_count} requisito{'s' if total - met_count != 1 else ''} "
+                "por completar. El paciente ha llegado a la semana 6 sin cumplirlos todos."
+            )
+            if st.button(
+                "Añadir prórroga de 2 semanas",
+                key=f"grant_ext_{patient_id}",
+                type="secondary",
+            ):
+                grant_phase_extension(patient_id, current_phase_id)
+                st.success("Prórroga de 2 semanas añadida. Ahora están disponibles las semanas 7 y 8.")
+                st.rerun()
+        elif not all_met:
             missing = total - met_count
             st.warning(f"Faltan {missing} requisito{'s' if missing != 1 else ''} por completar antes de avanzar.")
 
@@ -282,9 +311,12 @@ def show_patient_detail(patient_id: str) -> None:
         next_phase_id   = current_phase_id + 1
         next_phase_obj  = next((p for p in all_phases if p["id"] == next_phase_id), None)
         next_phase_name = next_phase_obj["name"] if next_phase_obj else f"Fase {next_phase_id}"
-        advance_label   = f"Avanzar a {next_phase_name} →"
 
-        if st.button(advance_label, disabled=not all_met, type="primary"):
+        # With an active extension the clinician can always advance
+        can_advance = all_met or has_extension
+        advance_label = f"Avanzar a {next_phase_name} →"
+
+        if st.button(advance_label, disabled=not can_advance, type="primary"):
             advance_patient_phase(patient_id, current_phase_id)
             st.rerun()
     else:
@@ -312,24 +344,34 @@ def _render_weekly_tracking(
     phase_id: int,
     manual_reqs: list[dict],
     phase_weekly: dict,
+    has_extension: bool = False,
 ) -> None:
     """
     Interactive weekly check section for the current phase.
     Shows a week selector, checkboxes for that week, a save button,
     and a historical summary grid once data has been saved.
+    When has_extension is True, weeks 7 and 8 are also available.
     """
     st.markdown("**Seguimiento semanal**")
 
+    max_week = 8 if has_extension else 6
     weeks_done = sorted(w for w in phase_weekly if phase_weekly[w])
     default_index = (weeks_done[-1] - 1) if weeks_done else 0
+    default_index = min(default_index, max_week - 1)
+
+    def _week_label(w: int) -> str:
+        suffix = " ✓" if w in weeks_done else ""
+        if w > 6:
+            return f"Semana {w} (prórroga){suffix}"
+        return f"Semana {w}{suffix}"
 
     sel_col, _ = st.columns([2, 5])
     with sel_col:
         week = st.selectbox(
             "Semana de control",
-            options=list(range(1, 7)),
+            options=list(range(1, max_week + 1)),
             index=default_index,
-            format_func=lambda w: f"Semana {w}" + (" ✓" if w in weeks_done else ""),
+            format_func=_week_label,
             key=f"week_sel_{patient_id}_{phase_id}",
         )
 
@@ -358,24 +400,30 @@ def _render_weekly_tracking(
 
 def _render_weekly_summary(manual_reqs: list[dict], phase_weekly: dict) -> None:
     """
-    Read-only grid: requirements as rows, weeks S1–S6 as columns.
+    Read-only grid: requirements as rows, weeks S1–S6 (+ S7/S8 if prórroga) as columns.
     Cells: ✅ passed, ❌ failed, — not yet recorded.
     """
     if not phase_weekly:
         st.caption("Sin datos de seguimiento semanal registrados.")
         return
 
+    max_week = max(phase_weekly.keys()) if phase_weekly else 6
+    max_week = max(max_week, 6)  # always show at least 6 weeks
+
     table: dict[str, list] = {
         "Requisito": [req["description"] for req in manual_reqs]
     }
-    for w in range(1, 7):
+    for w in range(1, max_week + 1):
         week_data = phase_weekly.get(w, {})
-        table[f"S{w}"] = [
+        col_name = f"S{w}*" if w > 6 else f"S{w}"  # mark extension weeks with *
+        table[col_name] = [
             ("✅" if week_data[req["id"]] else "❌") if req["id"] in week_data else "—"
             for req in manual_reqs
         ]
 
     st.dataframe(table, use_container_width=True, hide_index=True)
+    if max_week > 6:
+        st.caption("* Semanas de prórroga")
 
 
 def _show_patient_timeline(current_phase_id: int, phases: list[dict]) -> None:
