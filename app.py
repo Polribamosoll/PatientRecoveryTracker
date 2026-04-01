@@ -59,7 +59,7 @@ def check_auth() -> None:
         password = st.text_input("Contraseña", type="password", key="login_pw")
         if st.button("Entrar", type="primary", use_container_width=True):
             app_password = os.environ.get("APP_PASSWORD") or st.secrets.get("APP_PASSWORD", "")
-        if password == app_password:
+            if password == app_password:
                 st.session_state.authenticated = True
                 st.rerun()
             else:
